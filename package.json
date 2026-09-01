@@ -1,0 +1,125 @@
+{
+  "name": "snapsnip",
+  "displayName": "SnapSnip",
+  "description": "Save, name, and reuse code snippets with auto language detection. Browse snippets grouped by language in a handy sidebar.",
+  "version": "1.0.0",
+  "publisher": "zakiuhh",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zakiuhh/snapsnip"
+  },
+  "homepage": "https://github.com/zakiuhh/snapsnip#readme",
+  "bugs": {
+    "url": "https://github.com/zakiuhh/snapsnip/issues"
+  },
+  "keywords": [
+    "snippet",
+    "snippets",
+    "code snippets",
+    "save code",
+    "reuse",
+    "snapsnip"
+  ],
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Snippets",
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "snapSnip.saveSnippet",
+        "title": "SnapSnip: Save Selected Snippet"
+      },
+      {
+        "command": "snapSnip.insertSnippet",
+        "title": "SnapSnip: Insert Snippet"
+      },
+      {
+        "command": "snapSnip.deleteSnippet",
+        "title": "SnapSnip: Delete Snippet"
+      },
+      {
+        "command": "snapSnip.previewSnippet",
+        "title": "SnapSnip: Preview Snippet"
+      },
+      {
+        "command": "snapSnip.refresh",
+        "title": "SnapSnip: Refresh",
+        "icon": "$(refresh)"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "snapSnip.saveSnippet",
+        "key": "ctrl+alt+s",
+        "mac": "cmd+alt+s",
+        "when": "editorTextFocus && editorHasSelection"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "snapSnipExplorer",
+          "title": "SnapSnip",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "snapSnipExplorer": [
+        {
+          "id": "snapSnipView",
+          "name": "My Snippets"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "snapSnip.refresh",
+          "when": "view == snapSnipView",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "snapSnip.insertSnippet",
+          "when": "view == snapSnipView && viewItem == snippet",
+          "group": "inline@1"
+        },
+        {
+          "command": "snapSnip.previewSnippet",
+          "when": "view == snapSnipView && viewItem == snippet",
+          "group": "inline@2"
+        },
+        {
+          "command": "snapSnip.deleteSnippet",
+          "when": "view == snapSnipView && viewItem == snippet",
+          "group": "2_delete"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "@types/uuid": "^11.0.0",
+    "uuid": "^11.1.1"
+  }
+}

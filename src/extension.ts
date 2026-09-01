@@ -1,0 +1,197 @@
+import * as vscode from 'vscode';
+import { SnippetStore } from './snippetStore';
+import { SnippetItem, SnippetTreeProvider } from './snippetTreeProvider';
+import { SnippetWebview } from './snippetWebview';
+
+export function activate(context: vscode.ExtensionContext) {
+  // ── Store (global: uses globalState, persists across workspaces) ───────────
+  const store = new SnippetStore(context.globalState);
+
+  // ── Sidebar tree ───────────────────────────────────────────────────────────
+  const treeProvider = new SnippetTreeProvider(store);
+  const treeView = vscode.window.createTreeView('snapSnipView', {
+    treeDataProvider: treeProvider,
+    showCollapseAll: true,
+  });
+
+  // ── Helper: refresh tree ──────────────────────────────────────────────────
+  const refresh = () => treeProvider.refresh();
+
+  // ── Command: Save Snippet (Ctrl+Alt+S) ────────────────────────────────────
+  const saveCmd = vscode.commands.registerCommand(
+    'snapSnip.saveSnippet',
+    async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) {
+        vscode.window.showWarningMessage('No active editor found.');
+        return;
+      }
+
+      const selection = editor.selection;
+      if (selection.isEmpty) {
+        vscode.window.showWarningMessage(
+          'Please select some code before saving a snippet.'
+        );
+        return;
+      }
+
+      const code = editor.document.getText(selection);
+      // Auto-detect language from the active document
+      const language = editor.document.languageId;
+
+      const name = await vscode.window.showInputBox({
+        prompt: 'Enter a name for your snippet',
+        placeHolder: 'e.g. "Debounce function"',
+        validateInput: (v) =>
+          v.trim().length === 0 ? 'Name cannot be empty.' : undefined,
+      });
+
+      if (name === undefined) {
+        return; // user cancelled
+      }
+
+      store.add(name.trim(), language, code);
+      refresh();
+
+      vscode.window.showInformationMessage(
+        `✅ Snippet "${name.trim()}" saved as [${language}]`
+      );
+    }
+  );
+
+  // ── Command: Insert Snippet ───────────────────────────────────────────────
+  const insertCmd = vscode.commands.registerCommand(
+    'snapSnip.insertSnippet',
+    async (item?: SnippetItem) => {
+      let snippet = item?.snippet;
+
+      // If triggered from command palette (no item), let user pick
+      if (!snippet) {
+        const all = store.getAll();
+        if (all.length === 0) {
+          vscode.window.showInformationMessage(
+            'No snippets saved yet. Select code and press Ctrl+Alt+S to save one!'
+          );
+          return;
+        }
+        const picked = await vscode.window.showQuickPick(
+          all.map((s) => ({
+            label: s.name,
+            description: s.language,
+            detail: s.code.split('\n')[0].trim(),
+            snippet: s,
+          })),
+          { placeHolder: 'Choose a snippet to insert' }
+        );
+        if (!picked) {
+          return;
+        }
+        snippet = picked.snippet;
+      }
+
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) {
+        vscode.window.showWarningMessage(
+          'No active editor — open a file first.'
+        );
+        return;
+      }
+
+      editor.edit((editBuilder) => {
+        editBuilder.replace(editor.selection, snippet!.code);
+      });
+    }
+  );
+
+  // ── Command: Delete Snippet ───────────────────────────────────────────────
+  const deleteCmd = vscode.commands.registerCommand(
+    'snapSnip.deleteSnippet',
+    async (item?: SnippetItem) => {
+      let snippetId: string | undefined;
+      let snippetName: string | undefined;
+
+      if (item?.snippet) {
+        snippetId = item.snippet.id;
+        snippetName = item.snippet.name;
+      } else {
+        // Command palette fallback
+        const all = store.getAll();
+        const picked = await vscode.window.showQuickPick(
+          all.map((s) => ({ label: s.name, description: s.language, id: s.id })),
+          { placeHolder: 'Choose a snippet to delete' }
+        );
+        if (!picked) {
+          return;
+        }
+        snippetId = picked.id;
+        snippetName = picked.label;
+      }
+
+      const confirm = await vscode.window.showWarningMessage(
+        `Delete snippet "${snippetName}"?`,
+        { modal: true },
+        'Delete'
+      );
+      if (confirm !== 'Delete') {
+        return;
+      }
+
+      store.delete(snippetId!);
+      refresh();
+      vscode.window.showInformationMessage(`🗑️ Snippet "${snippetName}" deleted.`);
+    }
+  );
+
+  // ── Command: Preview Snippet (Webview) ────────────────────────────────────
+  const previewCmd = vscode.commands.registerCommand(
+    'snapSnip.previewSnippet',
+    async (item?: SnippetItem) => {
+      let snippet = item?.snippet;
+
+      if (!snippet) {
+        const all = store.getAll();
+        const picked = await vscode.window.showQuickPick(
+          all.map((s) => ({ label: s.name, description: s.language, snippet: s })),
+          { placeHolder: 'Choose a snippet to preview' }
+        );
+        if (!picked) {
+          return;
+        }
+        snippet = picked.snippet;
+      }
+
+      SnippetWebview.show(context, snippet);
+    }
+  );
+
+  // ── Command: Refresh tree ─────────────────────────────────────────────────
+  const refreshCmd = vscode.commands.registerCommand(
+    'snapSnip.refresh',
+    refresh
+  );
+
+  // ── Empty-state message in sidebar ───────────────────────────────────────
+  treeView.message =
+    store.getAll().length === 0
+      ? 'No snippets yet. Select code and press Ctrl+Alt+S to save your first!'
+      : undefined;
+
+  // Update sidebar message whenever tree refreshes
+  treeProvider.onDidChangeTreeData(() => {
+    treeView.message =
+      store.getAll().length === 0
+        ? 'No snippets yet. Select code and press Ctrl+Alt+S to save your first!'
+        : undefined;
+  });
+
+  context.subscriptions.push(
+    treeView,
+    saveCmd,
+    insertCmd,
+    deleteCmd,
+    previewCmd,
+    refreshCmd
+  );
+}
+
+export function deactivate() {}

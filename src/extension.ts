@@ -164,6 +164,99 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
+  // ── Command: Import Snippets from JSON (e.g. from Web App) ────────────────
+  const importCmd = vscode.commands.registerCommand(
+    'snapSnip.importSnippets',
+    async () => {
+      const uris = await vscode.window.showOpenDialog({
+        canSelectFiles: true,
+        canSelectFolders: false,
+        canSelectMany: false,
+        openLabel: 'Import Snippets',
+        filters: {
+          'JSON Files': ['json'],
+        },
+      });
+
+      if (!uris || uris.length === 0) {
+        return;
+      }
+
+      try {
+        const fileData = await vscode.workspace.fs.readFile(uris[0]);
+        const contentStr = new TextDecoder('utf-8').decode(fileData);
+        const parsed = JSON.parse(contentStr);
+
+        let snippetList: any[] = [];
+        if (Array.isArray(parsed)) {
+          snippetList = parsed;
+        } else if (parsed && Array.isArray(parsed.snippets)) {
+          snippetList = parsed.snippets;
+        } else {
+          vscode.window.showErrorMessage(
+            'Invalid format: Expected a JSON file containing an array of snippets or a {"snippets": [...]} object.'
+          );
+          return;
+        }
+
+        const count = store.importSnippets(snippetList);
+        refresh();
+
+        if (count === 0) {
+          vscode.window.showWarningMessage('No valid snippets found in the selected file.');
+        } else {
+          vscode.window.showInformationMessage(
+            `✅ Successfully imported ${count} snippet${count !== 1 ? 's' : ''}!`
+          );
+        }
+      } catch (err: any) {
+        vscode.window.showErrorMessage(`Failed to import snippets: ${err.message || err}`);
+      }
+    }
+  );
+
+  // ── Command: Export Snippets to JSON ──────────────────────────────────────
+  const exportCmd = vscode.commands.registerCommand(
+    'snapSnip.exportSnippets',
+    async () => {
+      const all = store.getAll();
+      if (all.length === 0) {
+        vscode.window.showInformationMessage('No snippets saved to export yet.');
+        return;
+      }
+
+      const saveUri = await vscode.window.showSaveDialog({
+        defaultUri: vscode.Uri.file(`snapsnip-export-${new Date().toISOString().slice(0, 10)}.json`),
+        filters: {
+          'JSON Files': ['json'],
+        },
+      });
+
+      if (!saveUri) {
+        return;
+      }
+
+      try {
+        const payload = {
+          version: '1.0',
+          source: 'snapsnip-vscode',
+          exportedAt: new Date().toISOString(),
+          snippets: all,
+        };
+
+        const jsonStr = JSON.stringify(payload, null, 2);
+        const encoded = new TextEncoder().encode(jsonStr);
+        await vscode.workspace.fs.writeFile(saveUri, encoded);
+
+        vscode.window.showInformationMessage(
+          `✅ Successfully exported ${all.length} snippet${all.length !== 1 ? 's' : ''} to ${saveUri.fsPath}!`
+        );
+      } catch (err: any) {
+        vscode.window.showErrorMessage(`Failed to export snippets: ${err.message || err}`);
+      }
+    }
+  );
+
   // ── Command: Refresh tree ─────────────────────────────────────────────────
   const refreshCmd = vscode.commands.registerCommand(
     'snapSnip.refresh',
@@ -190,6 +283,8 @@ export function activate(context: vscode.ExtensionContext) {
     insertCmd,
     deleteCmd,
     previewCmd,
+    importCmd,
+    exportCmd,
     refreshCmd
   );
 }

@@ -47,6 +47,31 @@ export class SnippetStore {
     return snippet;
   }
 
+  /** Bulk import snippets and persist */
+  importSnippets(incoming: Partial<Snippet>[]): number {
+    const valid = incoming.filter((s): s is Partial<Snippet> & { name: string; code: string } => 
+      typeof s?.name === 'string' && s.name.trim().length > 0 && typeof s?.code === 'string'
+    );
+
+    if (valid.length === 0) {
+      return 0;
+    }
+
+    const all = this.getAll();
+    for (const s of valid) {
+      all.push({
+        id: s.id || uuidv4(),
+        name: s.name.trim(),
+        language: (s.language || 'plaintext').trim().toLowerCase(),
+        code: s.code,
+        createdAt: s.createdAt || new Date().toISOString(),
+      });
+    }
+
+    this.globalState.update(STORAGE_KEY, all);
+    return valid.length;
+  }
+
   /** Delete a snippet by id */
   delete(id: string): void {
     const filtered = this.getAll().filter((s) => s.id !== id);

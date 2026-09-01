@@ -50,6 +50,16 @@
         "title": "SnapSnip: Preview Snippet"
       },
       {
+        "command": "snapSnip.importSnippets",
+        "title": "SnapSnip: Import Snippets from JSON",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "snapSnip.exportSnippets",
+        "title": "SnapSnip: Export Snippets to JSON",
+        "icon": "$(cloud-upload)"
+      },
+      {
         "command": "snapSnip.refresh",
         "title": "SnapSnip: Refresh",
         "icon": "$(refresh)"
@@ -83,9 +93,19 @@
     "menus": {
       "view/title": [
         {
+          "command": "snapSnip.importSnippets",
+          "when": "view == snapSnipView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "snapSnip.exportSnippets",
+          "when": "view == snapSnipView",
+          "group": "navigation@2"
+        },
+        {
           "command": "snapSnip.refresh",
           "when": "view == snapSnipView",
-          "group": "navigation"
+          "group": "navigation@3"
         }
       ],
       "view/item/context": [

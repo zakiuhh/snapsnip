@@ -2,7 +2,7 @@
   "name": "snapsnip",
   "displayName": "SnapSnip",
   "description": "Save, name, and reuse code snippets with auto language detection. Browse snippets grouped by language in a handy sidebar.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "zakiuhh",
   "license": "MIT",
   "icon": "media/icon.png",
